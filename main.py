@@ -1,7 +1,7 @@
 import argparse
 import sys
 import os
-from typing import TypedDict
+from typing import Literal, Optional, TypedDict
 from dotenv import load_dotenv
 from src.utils.logger import log_experiment
 
@@ -10,12 +10,12 @@ class RefactorState(TypedDict):
     """Shared workflow state passed between agents."""
 
     file_path: str
-    original_code: str
-    issues_found: str
-    fixed_code: str
-    test_results: str
+    original_code: Optional[str]
+    issues_found: Optional[str]
+    fixed_code: Optional[str]
+    test_results: Optional[str]
     iteration: int
-    status: str  # "in_progress", "success", "retry", "max_iterations"
+    status: Literal["in_progress", "success", "retry", "max_iterations"]
 
 load_dotenv()
 
