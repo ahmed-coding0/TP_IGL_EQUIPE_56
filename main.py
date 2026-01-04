@@ -3,8 +3,15 @@ import sys
 import os
 from typing import Literal, Optional, TypedDict
 from dotenv import load_dotenv
-from src.utils.logger import log_experiment
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langgraph.graph import StateGraph, END
+from src.utils.logger import log_experiment, ActionType
 
+
+# load environment variables
+load_dotenv()
+# define max iterations for refactoring loop
+MAX_ITERATIONS = 10
 
 class RefactorState(TypedDict):
     """Shared workflow state passed between agents."""
@@ -17,25 +24,124 @@ class RefactorState(TypedDict):
     iteration: int
     status: Literal["in_progress", "success", "retry", "max_iterations"]
 
-load_dotenv()
+def auditor_node(state: RefactorState) -> RefactorState:
+    """Auditor: Analyze code and identify issues."""
+    
+    file_path = state["file_path"]
+    code = state.get("original_code", "")
+    
+    print(f"  📊 Auditor analyzing {file_path}...")
+    
+    llm = ChatGoogleGenerativeAI(
+        model="gemini-2.5-flash",
+        google_api_key=os.getenv("GOOGLE_API_KEY")
+    )
+    
+    prompt = f"""You are an expert Python code auditor.
+
+Analyze this Python file and identify ALL issues:
+- Bugs (logic errors, runtime errors)
+- Style violations (PEP8)
+- Missing docstrings
+- Missing type hints
+- Security issues
+
+FILE: {file_path}
+
+CODE:
+```python
+{code}
+```
+
+List each issue with:
+1. Line number
+2. Issue type (BUG, STYLE, DOCUMENTATION, etc.)
+3. Description
+4. Severity (HIGH, MEDIUM, LOW)"""
+
+    try:
+        response = llm.invoke(prompt)
+        issues = response.content
+        
+        state["issues_found"] = issues
+        state["status"] = "in_progress"
+        
+        # Log the analysis
+        log_experiment(
+            agent_name="Auditor",
+            model_used="gemini-2.5-flash",
+            action=ActionType.ANALYSIS,
+            details={
+                "input_prompt": prompt,
+                "output_response": issues,
+            },
+            status="SUCCESS"
+        )
+        
+        print(f"  ✅ Issues found: {len(issues.split(chr(10)))} lines")
+        
+    except Exception as e:
+        error_msg = f"Auditor failed: {e}"
+        state["issues_found"] = error_msg
+        state["status"] = "retry"
+        print(f"  ❌ {error_msg}")
+        
+        log_experiment(
+            agent_name="Auditor",
+            model_used="gemini-2.5-flash",
+            action=ActionType.ANALYSIS,
+            details={
+                "input_prompt": prompt,
+                "output_response": error_msg,
+            },
+            status="FAILURE"
+        )
+    
+    return state
+
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--target_dir", type=str, required=True)
+    parser.add_argument("--file", type=str, required=True, help="Path to Python file to analyze")
     args = parser.parse_args()
 
-    if not os.path.exists(args.target_dir):
-        print(f"❌ Dossier {args.target_dir} introuvable.")
+    file_path = args.file
+
+    if not os.path.exists(file_path):
+        print(f"❌ Fichier {file_path} introuvable.")
         sys.exit(1)
 
-    print(f"🚀 DEMARRAGE SUR : {args.target_dir}")
+    if not file_path.endswith(".py"):
+        print(f"❌ Le fichier doit être un fichier .py")
+        sys.exit(1)
+
+    print(f"🚀 ANALYSE DU FICHIER : {file_path}")
     
-    # TODO: Implement LangGraph workflow here
-    # - Auditor Agent: Analyze code
-    # - Fixer Agent: Apply corrections
-    # - Judge Agent: Run tests and validate
+    # Read file
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            code = f.read()
+    except Exception as e:
+        print(f"❌ Impossible de lire le fichier : {e}")
+        sys.exit(1)
     
-    print("✅ MISSION_COMPLETE")
+    # Create initial state
+    state = RefactorState(
+        file_path=file_path,
+        original_code=code,
+        issues_found=None,
+        fixed_code=None,
+        test_results=None,
+        iteration=0,
+        status="in_progress"
+    )
+    
+    # Run auditor
+    state = auditor_node(state)
+    
+    print(f"\n📄 {file_path} → status: {state['status']}")
+   # print(f"\n🔍 Issues Found:\n{state['issues_found']}")
+    print("\n✅ ANALYSE COMPLETE")
 
 if __name__ == "__main__":
     main()
