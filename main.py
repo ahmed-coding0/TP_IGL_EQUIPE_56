@@ -1,17 +1,42 @@
 import argparse
 import sys
 import os
+#!/usr/bin/env python3
+"""Multi-agent code refactoring system using LangGraph."""
+
+import argparse
+import os
+import sys
 from typing import Literal, Optional, TypedDict
+
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import StateGraph, END
+
 from src.utils.logger import log_experiment, ActionType
 
 
-# load environment variables
+# Load environment variables
 load_dotenv()
-# define max iterations for refactoring loop
+
+# Define max iterations for refactoring loop
 MAX_ITERATIONS = 10
+
+
+def extract_code_from_markdown(response: str) -> str:
+    """Extract Python code from markdown code blocks.
+    
+    Args:
+        response: LLM response that may contain code in markdown blocks
+        
+    Returns:
+        Extracted code without markdown formatting
+    """
+    if "```python" in response:
+        return response.split("```python")[1].split("```")[0].strip()
+    elif "```" in response:
+        return response.split("```")[1].split("```")[0].strip()
+    return response.strip()
 
 class RefactorState(TypedDict):
     """Shared workflow state passed between agents."""
