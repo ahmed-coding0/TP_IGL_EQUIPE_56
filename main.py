@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+"""Multi-agent code refactoring system using LangGraph."""
 import argparse
 import sys
 import os
@@ -23,6 +25,16 @@ class RefactorState(TypedDict):
     test_results: Optional[str]
     iteration: int
     status: Literal["in_progress", "success", "retry", "max_iterations"]
+
+
+def extract_code_from_markdown(response: str) -> str:
+    """Extract code from ```python blocks in LLM response."""
+    if "```python" in response:
+        return response.split("```python")[1].split("```")[0].strip()
+    elif "```" in response:
+        return response.split("```")[1].split("```")[0].strip()
+    return response.strip()
+
 
 def auditor_node(state: RefactorState) -> RefactorState:
     """Auditor: Analyze code and identify issues."""
@@ -69,7 +81,7 @@ List each issue with:
         # Log the analysis
         log_experiment(
             agent_name="Auditor",
-            model_used="gemini-2.5-flash",
+            model_used="gemini-2.5-pro",
             action=ActionType.ANALYSIS,
             details={
                 "input_prompt": prompt,
@@ -88,8 +100,103 @@ List each issue with:
         
         log_experiment(
             agent_name="Auditor",
-            model_used="gemini-2.5-flash",
+            model_used="gemini-2.5-pro",
             action=ActionType.ANALYSIS,
+            details={
+                "input_prompt": prompt,
+                "output_response": error_msg,
+            },
+            status="FAILURE"
+        )
+    
+    return state
+
+
+def fixer_node(state: RefactorState) -> RefactorState:
+    """Fixer: Apply corrections to code based on issues found."""
+    
+    file_path = state["file_path"]
+    original_code = state.get("original_code", "")
+    issues = state.get("issues_found", "")
+    test_failures = state.get("test_results", "")
+    iteration = state.get("iteration", 0)
+    
+    print(f"  🔧 Fixer applying corrections (iteration {iteration})...")
+    
+    # Initialize Gemini Flash LLM
+    llm = ChatGoogleGenerativeAI(
+        model="gemini-2.5-flash",
+        google_api_key=os.getenv("GOOGLE_API_KEY"),
+        temperature=0.3
+    )
+    
+    # Create fix prompt with issues and optional test failures
+    prompt = f"""You are an expert Python code fixer.
+
+CRITICAL INSTRUCTIONS:
+- Return ONLY the complete corrected Python code
+- Wrap your code in ```python blocks
+- Do NOT include explanations, comments, or any text outside the code block
+- Fix ALL issues listed below
+- Preserve the original functionality
+- Apply PEP8 formatting
+- Add proper docstrings and type hints
+
+FILE: {file_path}
+
+ORIGINAL CODE:
+```python
+{original_code}
+```
+
+ISSUES TO FIX:
+{issues}
+"""
+    
+    # Add test failure context if looping
+    if test_failures and iteration > 0:
+        prompt += f"""
+
+PREVIOUS TEST FAILURES (PRIORITY - FIX THESE FIRST):
+{test_failures}
+
+Focus on fixing the test failures while also addressing the other issues.
+"""
+    
+    try:
+        response = llm.invoke(prompt)
+        raw_response = response.content
+        
+        # Extract code from markdown blocks
+        fixed_code = extract_code_from_markdown(raw_response)
+        
+        state["fixed_code"] = fixed_code
+        state["status"] = "in_progress"
+        
+        # Log the fix
+        log_experiment(
+            agent_name="Fixer",
+            model_used="gemini-2.5-flash",
+            action=ActionType.FIX,
+            details={
+                "input_prompt": prompt,
+                "output_response": raw_response,
+            },
+            status="SUCCESS"
+        )
+        
+        print(f"  ✅ Code fixed ({len(fixed_code)} chars)")
+        
+    except Exception as e:
+        error_msg = f"Fixer failed: {e}"
+        state["fixed_code"] = original_code  # Fallback to original
+        state["status"] = "retry"
+        print(f"  ❌ {error_msg}")
+        
+        log_experiment(
+            agent_name="Fixer",
+            model_used="gemini-2.5-flash",
+            action=ActionType.FIX,
             details={
                 "input_prompt": prompt,
                 "output_response": error_msg,
@@ -139,8 +246,11 @@ def main():
     # Run auditor
     state = auditor_node(state)
     
+    # Run fixer
+    state = fixer_node(state)
+    
     print(f"\n📄 {file_path} → status: {state['status']}")
-   # print(f"\n🔍 Issues Found:\n{state['issues_found']}")
+    print(f"\n💾 Full analysis and fixes logged to logs/experiment_data.json")
     print("\n✅ ANALYSE COMPLETE")
 
 if __name__ == "__main__":
