@@ -49,10 +49,9 @@ def get_llm(agent_type: str = "default", temperature=0.3):
     Returns:
         LLM instance (ChatGroq or ChatGoogleGenerativeAI)
     """
-    # AUDITOR ALWAYS USES GROQ LLAMA 70B SPECDEC
     if agent_type == "auditor":
         return ChatGroq(
-            model="llama-3.3-70b-specdec",  # 🎯 Speculative decoding for speed
+            model="llama-3.3-70b-versatile",  
             api_key=os.environ.get("GROQ_API_KEY"),
             temperature=temperature
         )
