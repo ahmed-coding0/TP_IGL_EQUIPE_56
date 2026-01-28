@@ -247,8 +247,7 @@ def fixer_node(state: RefactorState) -> RefactorState:
         
         if "Success" in write_result:
             state['fixed_code'] = fixed_code
-            # Increment iteration counter for next loop
-            state['iteration'] += 1
+            # Don't increment iteration here - only increment on retry
             print(f"  ✅ Fixer: Code updated successfully")
         else:
             print(f"  ⚠️  Fixer: Failed to write file - {write_result}", file=sys.stderr)
@@ -424,6 +423,8 @@ def should_continue(state: RefactorState) -> Literal["fixer", "end"]:
     status = state.get('status', 'in_progress')
     
     if status == "retry":
+        # Increment iteration counter only when retrying
+        state['iteration'] += 1
         return "fixer"
     else:
         # success or max_iterations
