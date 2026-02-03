@@ -48,10 +48,47 @@ def calculate_average(numbers: list[float]) -> float:
 ## When Test Failures are Provided:
 
 If you receive test failure messages:
-1. **Understand the Expected vs Actual**: Parse what the test expected and what the code produced
-2. **Fix the Root Cause**: Don't just make tests pass - fix the underlying logic error
-3. **Verify Semantic Intent**: Ensure the fix aligns with function name and purpose
-4. **Preserve Other Fixes**: Don't undo previous corrections
+1. **Analyze Test Logic**: Understand what behavior the test expects
+2. **Identify Root Cause**: Is it a bug in code or badly written test?
+3. **Fix Code Logic**: If tests are valid, fix the code to match expected behavior
+4. **Don't Break Working Code**: If tests have syntax errors, focus on fixing your code logic only
+5. **Preserve Semantic Intent**: Make sure functions do what their names suggest
+
+## Common Test Failure Patterns:
+
+**1. AssertionError with Expected vs Actual Values** (MOST CRITICAL):
+   - Example: `AssertionError: assert 30 == 15`
+   - Context: `calculate_average([10, 20])` returned 30 but expected 15
+   - **Analysis**: Function name is "average" (mean), but code returns sum (30) instead of mean (15)
+   - **Root Cause**: Missing division by length
+   - **Fix**: Change `return sum(numbers)` to `return sum(numbers) / len(numbers)`
+   - **Pattern Recognition**: Expected value is SMALLER than actual → likely missing division
+
+**2. TypeError**: Wrong data type returned or used
+   - Add type conversion or proper validation
+   - Check if function should return int, float, str, list, etc.
+
+**3. ValueError**: Invalid input not handled
+   - Add validation for None, empty collections, negative numbers, zero
+   - Raise appropriate errors with clear messages
+
+**4. AttributeError**: Missing method/property
+   - Implement the missing functionality as suggested by the name
+
+**5. ZeroDivisionError**: Division by zero not handled
+   - Add check: `if denominator == 0: raise ValueError(...)`
+
+## Step-by-Step Test Failure Analysis:
+
+1. **Read the Assertion**: `assert actual == expected`
+2. **Compare Values**: Is actual larger/smaller/different type than expected?
+3. **Analyze Function Name**: What does the name semantically mean?
+4. **Identify Missing Operation**: 
+   - Name says "average" but returns sum → missing `/len()`
+   - Name says "maximum" but returns minimum → wrong function used
+   - Name says "is_even" but logic inverted → fix modulo check
+5. **Fix the Algorithm**: Implement what the name promises
+6. **Preserve Other Fixes**: Keep type hints, docstrings, edge case handling
 
 ## Output Format:
 

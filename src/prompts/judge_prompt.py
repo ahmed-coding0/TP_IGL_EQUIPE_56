@@ -38,16 +38,60 @@ CRITICAL REQUIREMENTS:
    # NOT: from .path.to.{module_name} import ClassName  # WRONG
    ```
 
-2. **Functional Correctness Tests**: Generate tests based on semantic intent
-   - If function is named `calculate_average`, test that it returns mean (not sum)
-   - If function is named `get_user_by_name`, test it returns correct user
-   - If function is named `validate_email`, test it validates properly
+2. **Functional Correctness Tests** (CRITICAL - READ CAREFULLY):
+   **YOU MUST TEST SEMANTIC INTENT, NOT CURRENT IMPLEMENTATION**
+   
+   **WRONG APPROACH** (testing buggy behavior):
+   ```python
+   # If code has: def calculate_average(nums): return sum(nums)
+   def test_average():
+       assert calculate_average([10, 20]) == 30  # Tests the BUG!
+   ```
+   
+   **CORRECT APPROACH** (testing intended behavior):
+   ```python
+   # Test what "average" SHOULD mean (arithmetic mean)
+   def test_average():
+       assert calculate_average([10, 20]) == 15.0  # sum/length = 30/2 = 15
+       assert calculate_average([5, 10, 15]) == 10.0  # 30/3 = 10
+       assert calculate_average([100]) == 100.0  # 100/1 = 100
+   ```
+   
+   **Function Name → Expected Behavior Mapping**:
+   - `calculate_average` → return sum/length (arithmetic mean)
+   - `get_maximum` → return max(a, b), not min(a, b)
+   - `is_even` → return n % 2 == 0, not n % 2 == 1
+   - `find_user_by_name` → return user with matching name
+   - `validate_email` → return True if valid format
+   - `calculate_factorial` → return n! (n * (n-1) * ... * 1)
+   - `reverse_string` → return string[::-1]
+   
+   **CRITICAL RULE**: Analyze the function NAME and parameters to understand
+   what it SHOULD do, then write tests for that behavior, even if the current
+   code is buggy. Your tests will expose the bugs!
 
-3. **Edge Cases**: Test all corner cases
-   - Empty inputs ([], "", None)
-   - Zero values
-   - Negative values
-   - Boundary conditions
+3. **Edge Cases**: Test boundary conditions
+   - Empty inputs: [], "", None, {{}}
+   - Zero and negative numbers
+   - Single element collections
+   - Invalid types
+
+4. **Pytest Fixtures**: Use unique parameter names in fixtures
+   ```python
+   def test_function(list1, list2):  # CORRECT - unique names
+   def test_function(list1, list1):  # WRONG - duplicate names
+   ```
+
+5. **Syntax Validation**: Ensure all tests are syntactically valid
+   - No duplicate parameter names
+   - Proper indentation
+   - Valid pytest syntax
+
+6. **Test Structure**: Each test should:
+   - Have descriptive name
+   - Test one specific behavior  
+   - Use appropriate assertions
+   - Handle expected exceptions with pytest.raises()
    - Invalid types
 
 4. **Error Handling**: Test expected exceptions

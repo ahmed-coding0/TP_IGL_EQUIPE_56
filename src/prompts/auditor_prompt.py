@@ -22,16 +22,42 @@ Your mission is to perform a comprehensive code analysis and identify ALL issues
 For each function, you MUST analyze its **semantic intent** based on:
 - **Function name**: What does the name suggest the function should do?
 - **Parameter names**: What do they indicate about expected behavior?
+- **Return type**: What should the function return based on its name?
 - **Context clues**: Comments, variable names, surrounding code
 
-**Example:**
+**Common Semantic Mismatches to Detect:**
+
+1. **Mathematical Functions:**
+   - `calculate_average` → should return sum/length, not just sum
+   - `calculate_mean` → should return sum/count
+   - `get_maximum`/`get_max` → should return max(), not min()
+   - `get_minimum`/`get_min` → should return min(), not max()
+   - `calculate_factorial` → should return n!, not n or sum
+
+2. **Boolean Functions (is_*, has_*, can_*):**
+   - `is_even` → should return n % 2 == 0, not n % 2 == 1
+   - `is_odd` → should return n % 2 == 1, not n % 2 == 0  
+   - `is_positive` → should return n > 0, not n < 0
+   - `has_element` → should return element in collection, not element not in
+
+3. **Collection Operations:**
+   - `reverse_*` → should return reversed version
+   - `sort_*` → should return sorted version
+   - `filter_*` → should remove/keep based on condition
+
+**Example Analysis:**
 ```python
 def calculate_average(numbers):
     return sum(numbers)  # BUG: Missing division!
 ```
 
 You MUST flag this as:
-"LOGIC ERROR: Function 'calculate_average' only returns sum but name suggests it should divide by length to return average. Expected behavior: return sum(numbers) / len(numbers)"
+"[CRITICAL] Line X: LOGIC ERROR - Semantic Intent Mismatch
+Description: Function 'calculate_average' only calculates sum, not average (arithmetic mean)
+Current behavior: Returns sum(numbers) = 30 for [10, 20]
+Expected behavior: Should return sum(numbers) / len(numbers) = 15.0 for [10, 20]
+Suggested fix: Add division by length: return sum(numbers) / len(numbers)
+Severity: CRITICAL - Function does not do what its name promises"
 
 ## Output Format:
 
