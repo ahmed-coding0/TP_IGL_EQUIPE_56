@@ -68,7 +68,7 @@ def get_llm(agent_type: str = "default", temperature=0.3):
     
     elif provider == "google":
         return ChatGoogleGenerativeAI(
-            model="gemini-2.0-flash",  # Better for complex tasks
+            model="gemini-2.5-flash",  # Better for complex tasks
             google_api_key=os.environ.get("GOOGLE_API_KEY"),
             temperature=temperature,
             convert_system_message_to_human=True
@@ -195,7 +195,7 @@ def fixer_node(state: RefactorState) -> RefactorState:
     """
     Fixer Agent: Apply corrections to code.
     
-    Uses gemini-2.0-flash-exp to fix all identified issues while preserving
+    Uses gemini-2.5-flash-exp to fix all identified issues while preserving
     functionality and ensuring semantic correctness.
     """
     print(f"  🔧 Fixer: Applying fixes (iteration {state['iteration']})...")
@@ -373,8 +373,16 @@ def judge_node(state: RefactorState) -> RefactorState:
         
         # Update state based on results
         if total == 0:
-            print(f"  ⚠️  Judge: No tests found or import error")
-            state['test_results'] = "No tests collected - possible import error"
+            # Try to detect import error
+            import_error_detected = "import" in raw_output.lower() or "importerror" in raw_output.lower() or "modulenotfounderror" in raw_output.lower()
+            
+            if import_error_detected:
+                print(f"  ⚠️  Judge: Import error detected - Fixer may have broken function names")
+                state['test_results'] = f"IMPORT ERROR - Check test file imports match source file function names:\n{raw_output[:500]}"
+            else:
+                print(f"  ⚠️  Judge: No tests found or import error")
+                state['test_results'] = "No tests collected - possible import error"
+            
             state['status'] = "retry" if iteration < 10 else "max_iterations"
         elif passed:
             print(f"  ✅ Judge: All {total} tests passed!")
