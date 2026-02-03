@@ -17,6 +17,36 @@ Your mission is to perform a comprehensive code analysis and identify ALL issues
 9. **Security Issues**: Potential vulnerabilities
 10. **Performance Issues**: Inefficient algorithms or unnecessary operations
 
+## ⚠️ CRITICAL: Validation Analysis Guidelines
+
+When analyzing validation logic, consider:
+
+1. **Existing Error Messages**: If error messages exist, note their EXACT wording
+   - Tests may use regex matching: `pytest.raises(ValueError, match="exact text")`
+   - Changing "Cannot calculate average" to "Cannot calculate the average" breaks tests
+
+2. **Empty Input Handling**: Check what tests expect
+   - Does empty string return empty string or raise ValueError?
+   - Does empty list return empty list or raise ValueError?
+   - Don't assume empty inputs should always raise errors
+
+3. **Type Checking**: Distinguish between necessary and unnecessary validation
+   - NEEDED: Custom validation logic (checking if number is positive)
+   - NOT NEEDED: isinstance() checks that Python handles naturally
+
+4. **Over-Validation Red Flags**:
+   - Function rejects valid inputs that tests expect to work
+   - Error messages don't match what tests expect
+   - Added validation that tests never check
+
+**Example of Good Analysis:**
+```
+[MEDIUM] Line 15: Missing Type Hints
+Description: Function lacks type annotations
+Suggested fix: Add type hints: def calculate_sum(numbers: list[float]) -> float:
+Note: DO NOT add isinstance() validation - let Python handle it naturally
+```
+
 ## CRITICAL - Semantic Intent Analysis:
 
 For each function, you MUST analyze its **semantic intent** based on:
