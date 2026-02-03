@@ -106,11 +106,35 @@ CRITICAL REQUIREMENTS:
    - WRONG: assert result[0] is input_list[0]
    - CORRECT: assert result == input_list and result is not input_list
 
-3. **DONT assume exact error messages**:
-   - FRAGILE: with pytest.raises(ValueError, match="exact error text")
-   - ROBUST: with pytest.raises(ValueError)
+3. **NEVER assume custom error messages exist**:
+   - WRONG: with pytest.raises(TypeError, match="Both inputs must be numbers")
+   - CORRECT: with pytest.raises(TypeError)  # Python's natural error
+   - **RULE**: Only use `match=` if you can SEE the exact error message in the code
+   - Most functions rely on Python's built-in errors, NOT custom messages
 
-4. **DONT sort when order doesn't matter**:
+4. **DONT test Python's natural type handling as errors**:
+   - WRONG: Test that `is_even(2.0)` raises TypeError (2.0 % 2 works fine in Python!)
+   - WRONG: Test that `add(2.0, 3)` raises TypeError (Python handles mixed int/float)
+   - CORRECT: Only test TypeError for truly invalid types (strings, None, lists)
+   - **RULE**: If Python naturally handles it, don't test it as an error
+
+5. **NEVER test for TypeErrors unless you see explicit type checking**:
+   - WRONG: `with pytest.raises(TypeError): get_maximum("10")` when code has no isinstance()
+   - WRONG: `with pytest.raises(TypeError): calculate_average("10")` when code doesn't validate
+   - **CRITICAL RULE**: ONLY test TypeError if you see this pattern in the code:
+     ```python
+     if not isinstance(param, expected_type):
+         raise TypeError(...)
+     ```
+   - If the code doesn't have explicit type validation, DON'T test for TypeError
+   - Most functions rely on Python's natural duck typing - they fail naturally or work
+
+6. **DONT expect validation that isn't in the code**:
+   - WRONG: Expecting `if not isinstance(x, int)` when code doesn't have it
+   - WRONG: Expecting custom ValueError messages when code just uses Python's errors
+   - **RULE**: Read the code first. If it doesn't validate, don't test for validation
+
+7. **DONT sort when order doesn't matter**:
    - For same-type items: sorted() is OK
    - For unordered results: use set()
 
