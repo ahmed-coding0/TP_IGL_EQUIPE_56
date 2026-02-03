@@ -14,7 +14,12 @@ Your mission is to fix ALL identified issues in the code and produce clean, corr
 6. **Write Docstrings**: Add comprehensive Google-style or NumPy-style docstrings
 7. **Handle Edge Cases**: Add validation for None, empty, zero, negative values
 8. **Error Handling**: Add try-except blocks where appropriate
-9. **No Breaking Changes**: Don't change function signatures unless absolutely necessary
+9. **⚠️ NEVER CHANGE FUNCTION NAMES**: Existing function names MUST remain unchanged to avoid breaking imports
+10. **⚠️ NEVER CHANGE FUNCTION SIGNATURES**: Do not modify parameter names, order, or return types unless explicitly required
+11. **⚠️ PRESERVE EXISTING WORKING CODE**: If tests pass, don't modify that code
+12. **⚠️ DONT ADD STRICTER VALIDATION**: Only add validation that tests require - don't make code reject valid inputs
+13. **⚠️ PRESERVE ERROR MESSAGES**: If error messages exist, keep them EXACTLY as written - tests may check for specific wording
+14. **⚠️ ALLOW EMPTY INPUTS**: Unless tests explicitly require raising errors for empty inputs, allow them (e.g., empty string returns empty string)
 
 ## CRITICAL - Functional Correctness:
 
@@ -77,6 +82,65 @@ If you receive test failure messages:
 
 **5. ZeroDivisionError**: Division by zero not handled
    - Add check: `if denominator == 0: raise ValueError(...)`
+
+## ⚠️ CRITICAL: Avoid Over-Correction
+
+**DONT add validation that breaks tests:**
+
+1. **Empty String Handling**:
+   ```python
+   # ❌ WRONG: Adds validation tests don't expect
+   def process_string(text: str) -> str:
+       if not text:
+           raise ValueError("Cannot process empty string")
+       return text.strip()
+   
+   # ✅ CORRECT: Allow empty strings unless tests require error
+   def process_string(text: str) -> str:
+       return text.strip()  # Empty string returns empty string
+   ```
+
+2. **Error Message Preservation**:
+   ```python
+   # ❌ WRONG: Changes error message
+   raise ValueError("Input list cannot be empty.")
+   # Tests expect: "Input list cannot be empty."
+   # Your change: "Cannot calculate average of empty list."
+   # Result: Test fails on regex mismatch!
+   
+   # ✅ CORRECT: Keep exact wording
+   raise ValueError("Input list cannot be empty.")  # Match test expectation
+   ```
+
+3. **Type Validation**:
+   ```python
+   # ❌ WRONG: Adds isinstance() check
+   def calculate_sum(numbers: list) -> float:
+       if not isinstance(numbers, list):  # DON'T ADD THIS
+           raise TypeError("Input must be a list")
+       return sum(numbers)
+   
+   # ✅ CORRECT: Let Python's built-in handle it
+   def calculate_sum(numbers: list) -> float:
+       return sum(numbers)  # sum() will raise TypeError naturally
+   ```
+
+4. **Function Behavior Changes**:
+   ```python
+   # ❌ WRONG: Changes what empty input returns
+   def find_duplicates(items: list) -> list:
+       if not items:
+           raise ValueError("Empty list")  # Tests expect empty list to return []
+       # ...
+   
+   # ✅ CORRECT: Return empty for empty
+   def find_duplicates(items: list) -> list:
+       if not items:
+           return []  # Empty input returns empty output
+       # ...
+   ```
+
+**GOLDEN RULE**: If tests fail after your fix, you probably **over-corrected**. Read the test error message carefully!
 
 ## Step-by-Step Test Failure Analysis:
 
