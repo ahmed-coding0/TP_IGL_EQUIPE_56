@@ -137,13 +137,17 @@ def auditor_node(state: RefactorState) -> RefactorState:
     pylint_output = pylint_result.get('raw_output', '')
     
     # Create analysis prompt
-    user_prompt = create_auditor_prompt(file_path, code, pylint_output)
+    auditor_prompt = create_auditor_prompt(
+        code=code,
+        filename=os.path.basename(file_path),
+        pylint_output=pylint_result.get('output', '')
+    )
     
     try:
         # Call LLM with system prompt
         messages = [
             {"role": "system", "content": AUDITOR_SYSTEM_PROMPT},
-            {"role": "user", "content": user_prompt}
+            {"role": "user", "content": auditor_prompt}
         ]
         
         response = llm.invoke(messages)
@@ -158,7 +162,7 @@ def auditor_node(state: RefactorState) -> RefactorState:
             model_used=os.environ.get("LLM_PROVIDER", "google") + "-auditor",
             action=ActionType.ANALYSIS,
             details={
-                "input_prompt": user_prompt,
+                "input_prompt": auditor_prompt,
                 "output_response": issues_report,
                 "file_path": file_path,
                 "pylint_score": pylint_result.get('score', 0)
@@ -180,7 +184,7 @@ def auditor_node(state: RefactorState) -> RefactorState:
             model_used=os.environ.get("LLM_PROVIDER", "google") + "-auditor",
             action=ActionType.ANALYSIS,
             details={
-                "input_prompt": user_prompt,
+                "input_prompt": auditor_prompt,
                 "output_response": f"ERROR: {str(e)}",
                 "error": str(e)
             },
@@ -351,7 +355,7 @@ def judge_node(state: RefactorState) -> RefactorState:
         passed_count = test_results.get('passed_tests', 0)
         failed_count = test_results.get('failed_tests', 0)
         failures = test_results.get('failures', [])
-        raw_output = test_results.get('raw_output', '')
+        raw_output = test_results.get('output', '')
         
         # Log test execution
         log_experiment(
